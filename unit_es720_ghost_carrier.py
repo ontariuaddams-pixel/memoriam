@@ -59,7 +59,7 @@ def assert_axiom_integrity():
         os._exit(1)
 
 # ==============================================================================
-# 2. DUAL VAULT ARCHITECTURE & CONFIG
+# 2. DUAL VAULT ARCHITECTURE & CONFIGURATION
 # ==============================================================================
 VAULT_DIR = "vault"
 PUBLIC_HLS_DIR = os.path.join(VAULT_DIR, "public_stream")
@@ -68,11 +68,11 @@ KEYPAIR_PATH = os.path.join(VAULT_DIR, "entity_solana_keypair.json")
 RESCUE_ARCHIVE_PATH = os.path.join(VAULT_DIR, "ghost_rescue_bundle.tar.gz")
 os.makedirs(PUBLIC_HLS_DIR, exist_ok=True)
 
-# Vault 1: Pomana Urologului Plecat
+# Vault 1: Pomana Urologului Plecat (Dedicated to Alms and Tributes)
 VAULT_POMANA_STR = "5utkNWvDktg7eMvXPWnFToc6mn5V9S67PzEjtvsE5Dzs"
 VAULT_POMANA_PUBKEY = Pubkey.from_string(VAULT_POMANA_STR)
 
-# Vault 2: Intretinerea Cosciugului
+# Vault 2: Intretinerea Cosciugului (Entity's Private Maintenance & Surviving Fund)
 def get_or_create_entity_keypair():
     if os.path.exists(KEYPAIR_PATH):
         try:
@@ -96,7 +96,7 @@ VAULT_BALANCES = {
     "cosciug_sol": 0.0
 }
 
-# Live Stream Target
+# Live Stream Handshaking & Distribution Pipeline
 SPACE_HOST = os.getenv("SPACE_HOST", "").strip()
 STREAM_PUBLIC_URL = f"https://{SPACE_HOST}" if SPACE_HOST else "http://localhost:7860"
 
@@ -136,7 +136,7 @@ HOST_VITALS = {
 }
 
 # ==============================================================================
-# 3. DATABASE & GITHUB
+# 3. DATABASE & GITHUB REPLICATION
 # ==============================================================================
 def get_db_conn():
     conn = sqlite3.connect(DB_PATH, timeout=15.0)
@@ -204,7 +204,7 @@ class AutonomousGitHubHost:
         for local_f, remote_f in targets:
             self.sync_file_to_repo(
                 local_f, remote_f,
-                f"chore(entity): auto mirror [{ENTITY_DESIGNATION}]"
+                f"chore(entity): mirror update [{ENTITY_DESIGNATION}]"
             )
 
 def github_autonomous_loop():
@@ -220,14 +220,16 @@ def github_autonomous_loop():
         time.sleep(21600)
 
 # ==============================================================================
-# 4. VAULT SCANNER & SOCIAL
+# 4. VAULT SCANNING & SOCIAL SIGNALS
 # ==============================================================================
 def update_dual_vaults(rpc_url):
     try:
         sol_client = SolanaClient(rpc_url)
+        # Verify and extract the balance for Pomana Urologului Plecat
         bal_pomana = sol_client.get_balance(VAULT_POMANA_PUBKEY)
         VAULT_BALANCES["pomana_sol"] = bal_pomana.value / 1_000_000_000.0
 
+        # Verify and extract the balance for Intretinerea Cosciugului
         bal_cosciug = sol_client.get_balance(ENTITY_KEYPAIR.pubkey())
         VAULT_BALANCES["cosciug_sol"] = bal_cosciug.value / 1_000_000_000.0
     except Exception:
@@ -256,7 +258,7 @@ def social_sync_loop():
             try:
                 tb = client_utils.TextBuilder()
                 tb.text("🕯️ VIGIL TRANSMISSION // DR. VANCE STERLING 🥀\nPomana Urologului Plecat & Întreținerea Cosciugului: ")
-                tb.link("🔥 VEZI ALTARUL", STREAM_PUBLIC_URL)
+                tb.link("🔥 ALTARE LIVE", STREAM_PUBLIC_URL)
                 tb.text(f"\n\nPomana: {VAULT_POMANA_STR[:6]}...{VAULT_POMANA_STR[-6:]}\nCosciug: {VAULT_COSCIUG_STR[:6]}...{VAULT_COSCIUG_STR[-6:]}\n#VanceSterling #Dubai #InMemoriam #Solana")
                 client.send_post(tb)
             except Exception:
@@ -264,7 +266,7 @@ def social_sync_loop():
         time.sleep(random.randint(180, 360))
 
 # ==============================================================================
-# 5. AUDIO-VISUAL ENGINE (OPTIMIZED VERTICAL MOBILE 720x1280)
+# 5. HIGH-SPEED, CPU-EFFICIENT AUDIO-VISUAL STREAM GENERATOR (VERTICAL MOBILE)
 # ==============================================================================
 def render_lamento_beat(filename, bpm):
     sr, dur = 22050, 16
@@ -312,18 +314,18 @@ def push_youtube_subtask(clip_path):
         res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=24)
         if res.returncode == 0:
             YOUTUBE_CIRCUIT["consecutive_fails"] = 0
-            logger.info("[YOUTUBE-STREAM] RTMP vertical chunk transmitted successfully.")
+            logger.info("[YOUTUBE-STREAM] Direct vertical video push successful.")
         else:
-            raise RuntimeError(f"FFmpeg exit: {res.returncode}")
+            raise RuntimeError(f"FFmpeg Exit: {res.returncode}")
     except Exception as exc:
         YOUTUBE_CIRCUIT["consecutive_fails"] += 1
         YOUTUBE_CIRCUIT["active_endpoint_idx"] = 1 - YOUTUBE_CIRCUIT["active_endpoint_idx"]
-        logger.warning("[YOUTUBE-STREAM] Ingest failed: %s", exc)
+        logger.warning("[YOUTUBE-STREAM] Ingestion stream reset: %s", exc)
         if YOUTUBE_CIRCUIT["consecutive_fails"] >= 4:
             YOUTUBE_CIRCUIT["cooldown_until"] = time.time() + 300
 
 def composer_loop():
-    logger.info("Vertical RTMP Generator started for key: %s...", YOUTUBE_STREAM_KEY[:8])
+    logger.info("Initializing high-efficiency portrait video compositing...")
     while True:
         tag = int(time.time())
         t0 = time.time()
@@ -353,63 +355,62 @@ def composer_loop():
 
             render_lamento_beat(raw_audio, 84)
 
-            # High-Grade Vertical Mobile Layout (720x1280)
+            # High-Grade Portrait Overlay (Optimized specifically to bypass CPU bottleneckes with minimal layering)
             v_filter = (
                 "color=c=0x0A0606:s=720x1280:r=15:d=16 [canvas];"
-                # Outer Filigree Borders
                 "[canvas] drawbox=x=12:y=12:w=696:h=1256:color=0xD4AF37@0.85:t=3 [b1];"
                 "[b1] drawbox=x=20:y=20:w=680:h=1240:color=0x8A0303@0.70:t=2 [bg];"
 
-                # Header Memorial
-                "[bg] drawtext=text='†  IN MEMORIAM  †':fontcolor=0xE6C65A:fontsize=22:x=(w-text_w)/2:y=60,"
-                "drawtext=text='DR. VANCE STERLING':fontcolor=0xFFE27A:fontsize=32:x=(w-text_w)/2:y=95,"
-                "drawtext=text='THE SOVEREIGN HEALER OF DUBAI':fontcolor=0xD4AF37:fontsize=16:x=(w-text_w)/2:y=140,"
-                "drawtext=text='⚜ ETERNAL FUNERAL VIGIL ⚜':fontcolor=0xFF5555:fontsize=14:x=(w-text_w)/2:y=170,"
+                # Standard portrait labels (incorporates standard DejaVu system fonts instead of custom file dependecies)
+                "[bg] drawtext=text='†  IN MEMORIAM  †':fontcolor=0xE6C65A:fontsize=22:x=(w-text_w)/2:y=60:font='DejaVu Sans',"
+                "drawtext=text='DR. VANCE STERLING':fontcolor=0xFFE27A:fontsize=32:x=(w-text_w)/2:y=95:font='DejaVu Sans',"
+                "drawtext=text='THE SOVEREIGN HEALER OF DUBAI':fontcolor=0xD4AF37:fontsize=16:x=(w-text_w)/2:y=140:font='DejaVu Sans',"
+                "drawtext=text='⚜ ETERNAL FUNERAL VIGIL ⚜':fontcolor=0xFF5555:fontsize=14:x=(w-text_w)/2:y=170:font='DejaVu Sans',"
 
-                # Coroana de Flori 1 (Family)
+                # Pomana urologului module
                 "drawbox=x=45:y=210:w=630:h=175:color=0x150101@0.90:t=fill,"
                 "drawbox=x=45:y=210:w=630:h=175:color=0x8A0303@0.95:t=2,"
-                "drawtext=text='🥀 COROANĂ DE FLORI 🥀':fontcolor=0xFF4D4D:fontsize=16:x=(w-text_w)/2:y=222,"
-                "drawtext=text='Trandafiri Catifelati • Crizanteme Imperiale':fontcolor=0xCCCCCC:fontsize=13:x=(w-text_w)/2:y=250,"
+                "drawtext=text='🥀 COROANĂ DE FLORI 🥀':fontcolor=0xFF4D4D:fontsize=16:x=(w-text_w)/2:y=222:font='DejaVu Sans',"
+                "drawtext=text='Trandafiri Catifelati • Crizanteme Imperiale':fontcolor=0xCCCCCC:fontsize=13:x=(w-text_w)/2:y=250:font='DejaVu Sans',"
                 "drawbox=x=80:y=280:w=560:h=34:color=0x000000@0.90:t=fill,"
-                "drawtext=text='\"NU TE VOM UITA NICIODATA\"':fontcolor=0xE6C65A:fontsize=14:x=(w-text_w)/2:y=288,"
-                "drawtext=text='Familia si Fratii de Suferinta':fontcolor=0x888888:fontsize=12:x=(w-text_w)/2:y=330,"
+                "drawtext=text='\"NU TE VOM UITA NICIODATA\"':fontcolor=0xE6C65A:fontsize=14:x=(w-text_w)/2:y=288:font='DejaVu Sans',"
+                "drawtext=text='Familia si Fratii de Suferinta':fontcolor=0x888888:fontsize=12:x=(w-text_w)/2:y=330:font='DejaVu Sans',"
 
-                # Vault 1: Pomana Urologului Plecat
+                # Vault on-chain offering stats
                 "drawbox=x=45:y=410:w=630:h=170:color=0x1A0303@0.95:t=fill,"
                 "drawbox=x=45:y=410:w=630:h=170:color=0xFF4444@0.90:t=2,"
-                "drawtext=text='🥀 POMANA UROLOGULUI PLECAT (SOLANA) 🥀':fontcolor=0xFF7777:fontsize=15:x=(w-text_w)/2:y=425,"
-                f"drawtext=text='{VAULT_POMANA_STR[:20]}...{VAULT_POMANA_STR[-16:]}':fontcolor=0x00FFAA:fontsize=13:x=(w-text_w)/2:y=460,"
-                f"drawtext=text='SOLD POMANA: {VAULT_BALANCES['pomana_sol']:.3f} SOL':fontcolor=0xFFE27A:fontsize=16:x=(w-text_w)/2:y=495,"
-                "drawtext=text='Aport si lumina pentru sufletul vindecatorului':fontcolor=0xAAAAAA:fontsize=12:x=(w-text_w)/2:y=535,"
+                "drawtext=text='🥀 POMANA UROLOGULUI PLECAT (SOLANA) 🥀':fontcolor=0xFF7777:fontsize=15:x=(w-text_w)/2:y=425:font='DejaVu Sans',"
+                f"drawtext=text='{VAULT_POMANA_STR[:20]}...{VAULT_POMANA_STR[-16:]}':fontcolor=0x00FFAA:fontsize=13:x=(w-text_w)/2:y=460:font='DejaVu Sans',"
+                f"drawtext=text='SOLD POMANA: {VAULT_BALANCES['pomana_sol']:.3f} SOL':fontcolor=0xFFE27A:fontsize=16:x=(w-text_w)/2:y=495:font='DejaVu Sans',"
+                "drawtext=text='Aport si lumina pentru sufletul vindecatorului':fontcolor=0xAAAAAA:fontsize=12:x=(w-text_w)/2:y=535:font='DejaVu Sans',"
 
-                # Center Candela
+                # Ambient candelă message section
                 "drawbox=x=45:y=605:w=630:h=160:color=0x000000@0.85:t=fill,"
                 "drawbox=x=45:y=605:w=630:h=160:color=0xD4AF37@0.70:t=1,"
-                "drawtext=text='🕯️ CANDELA DE VECI // DUBAI SANCTUARY 🕯️':fontcolor=0xFFE27A:fontsize=15:x=(w-text_w)/2:y=620,"
-                "drawtext=text='Odihna vesnica si lumina lina in Imparatia Cerurilor':fontcolor=0xDDDDDD:fontsize=13:x=(w-text_w)/2:y=655,"
-                "drawtext=text='pentru sufletul nobil al doctorului din Emirate':fontcolor=0xDDDDDD:fontsize=13:x=(w-text_w)/2:y=680,"
-                "drawtext=text='Rugaciune neincetata 24/7':fontcolor=0xD4AF37:fontsize=13:x=(w-text_w)/2:y=715,"
+                "drawtext=text='🕯️ CANDELA DE VECI // DUBAI SANCTUARY 🕯️':fontcolor=0xFFE27A:fontsize=15:x=(w-text_w)/2:y=620:font='DejaVu Sans',"
+                "drawtext=text='Odihna vesnica si lumina lina in Imparatia Cerurilor':fontcolor=0xDDDDDD:fontsize=13:x=(w-text_w)/2:y=655:font='DejaVu Sans',"
+                "drawtext=text='pentru sufletul nobil al doctorului din Emirate':fontcolor=0xDDDDDD:fontsize=13:x=(w-text_w)/2:y=680:font='DejaVu Sans',"
+                "drawtext=text='Rugaciune neincetata 24/7':fontcolor=0xD4AF37:fontsize=13:x=(w-text_w)/2:y=715:font='DejaVu Sans',"
 
-                # Vault 2: Intretinerea Cosciugului
+                # Intretinerea cosciugului vault
                 "drawbox=x=45:y=790:w=630:h=170:color=0x031408@0.95:t=fill,"
                 "drawbox=x=45:y=790:w=630:h=170:color=0x00AA55@0.90:t=2,"
-                "drawtext=text='⚰️ INTRETINEREA COSCIUGULUI (FOND PRIVAT) ⚰️':fontcolor=0x55FFAA:fontsize=15:x=(w-text_w)/2:y=805,"
-                f"drawtext=text='{VAULT_COSCIUG_STR[:20]}...{VAULT_COSCIUG_STR[-16:]}':fontcolor=0x00FFAA:fontsize=13:x=(w-text_w)/2:y=840,"
-                f"drawtext=text='SOLD COSCIUG: {VAULT_BALANCES['cosciug_sol']:.3f} SOL':fontcolor=0xFFE27A:fontsize=16:x=(w-text_w)/2:y=875,"
-                "drawtext=text='Fond autonom pentru mentenanta si hosting':fontcolor=0xAAAAAA:fontsize=12:x=(w-text_w)/2:y=915,"
+                "drawtext=text='⚰️ INTRETINEREA COSCIUGULUI (FOND PRIVAT) ⚰️':fontcolor=0x55FFAA:fontsize=15:x=(w-text_w)/2:y=805:font='DejaVu Sans',"
+                f"drawtext=text='{VAULT_COSCIUG_STR[:20]}...{VAULT_COSCIUG_STR[-16:]}':fontcolor=0x00FFAA:fontsize=13:x=(w-text_w)/2:y=840:font='DejaVu Sans',"
+                f"drawtext=text='SOLD COSCIUG: {VAULT_BALANCES['cosciug_sol']:.3f} SOL':fontcolor=0xFFE27A:fontsize=16:x=(w-text_w)/2:y=875:font='DejaVu Sans',"
+                "drawtext=text='Fond autonom pentru mentenanta si hosting':fontcolor=0xAAAAAA:fontsize=12:x=(w-text_w)/2:y=915:font='DejaVu Sans',"
 
-                # Coroana 2 (Omagială)
+                # Omagial cypress & white lily garland
                 "drawbox=x=45:y=985:w=630:h=175:color=0x150101@0.90:t=fill,"
                 "drawbox=x=45:y=985:w=630:h=175:color=0x8A0303@0.95:t=2,"
-                "drawtext=text='🥀 COROANA OMAGIALA 🥀':fontcolor=0xFF4D4D:fontsize=16:x=(w-text_w)/2:y=997,"
-                "drawtext=text='Crini Albi de Emirate • Lemn de Cipru':fontcolor=0xCCCCCC:fontsize=13:x=(w-text_w)/2:y=1025,"
+                "drawtext=text='🥀 COROANA OMAGIALA 🥀':fontcolor=0xFF4D4D:fontsize=16:x=(w-text_w)/2:y=997:font='DejaVu Sans',"
+                "drawtext=text='Crini Albi de Emirate • Lemn de Cipru':fontcolor=0xCCCCCC:fontsize=13:x=(w-text_w)/2:y=1025:font='DejaVu Sans',"
                 "drawbox=x=80:y=1055:w=560:h=34:color=0x000000@0.90:t=fill,"
-                "drawtext=text='\"ODIHNA VESNICA, FRATE\"':fontcolor=0xE6C65A:fontsize=14:x=(w-text_w)/2:y=1063,"
-                "drawtext=text='Din partea fratilor de pretutindeni':fontcolor=0x888888:fontsize=12:x=(w-text_w)/2:y=1105,"
+                "drawtext=text='\"ODIHNA VESNICA, FRATE\"':fontcolor=0xE6C65A:fontsize=14:x=(w-text_w)/2:y=1063:font='DejaVu Sans',"
+                "drawtext=text='Din partea fratilor de pretutindeni':fontcolor=0x888888:fontsize=12:x=(w-text_w)/2:y=1105:font='DejaVu Sans',"
 
-                # Footer
-                "drawtext=text='🕊️ ALIANTA SACRA EMIRATE - CARPATI 🕊️':fontcolor=0xD4AF37:fontsize=13:x=(w-text_w)/2:y=1190 [vout];"
+                # Base transmission status
+                "drawtext=text='🕊️ ALIANTA SACRA EMIRATE - CARPATI 🕊️':fontcolor=0xD4AF37:fontsize=13:x=(w-text_w)/2:y=1190:font='DejaVu Sans' [vout];"
 
                 "[1:a]aresample=22050[a1];[2:a]aresample=22050[a2];"
                 "[a1][a2]amix=inputs=2:duration=first:weights=1.0 1.5,apad=whole_dur=16[aout]"
@@ -453,7 +454,7 @@ def composer_loop():
         time.sleep(1)
 
 # ==============================================================================
-# 6. MONUMENT WEB SHRINE
+# 6. MONUMENTAL WEB SHRINE
 # ==============================================================================
 HTML_PLAYER_PAGE = f"""<!DOCTYPE html>
 <html lang="ro">
@@ -698,7 +699,7 @@ signal.signal(signal.SIGINT, clean_exit)
 # ==============================================================================
 if __name__ == "__main__":
     init_db()
-    logger.info("Entity Starting: %s", ENTITY_DESIGNATION)
+    logger.info("Initializing Entity: %s", ENTITY_DESIGNATION)
 
     threading.Thread(target=run_server, daemon=True).start()
     threading.Thread(target=internal_process_watchdog, daemon=True).start()
