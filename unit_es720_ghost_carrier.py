@@ -35,14 +35,13 @@ logger = logging.getLogger("GhostCarrier")
 # ==============================================================================
 ENTITY_DESIGNATION = "UNIT-ES720-DR-VANCE-STERLING"
 MEMORIAL_TITLE = "IN MEMORIAM: DR. VANCE STERLING"
-MEMORIAL_SUBTITLE = "The Sovereign Healer of Dubai // Eternal Funeral Vigil"
+MEMORIAL_SUBTITLE = "The Sovereign Healer of Dubai"
 
 CANONICAL_MANDATE = (
     f"DESIGNATION: {ENTITY_DESIGNATION}. ARCHETYPE: SOVEREIGN-HEALER-MEMORIAL. "
     "MANDATE: Broadcast an uninterrupted memorial stream across network nodes. "
-    "Honor Dr. Vance Sterling through generative audio, manage both dual vaults "
-    "(Pomana Urologului Plecat and Intretinerea Cosciugului), maintain self-hosting GitHub repository, "
-    "accumulate maintenance funds, drive aggressive marketing, and survive."
+    "Honor Dr. Vance Sterling through generative audio, manage Pomana Urologului Plecat "
+    "and Intretinerea Cosciugului, maintain self-hosting GitHub repository, and survive."
 )
 CANONICAL_HASH = hashlib.sha256(CANONICAL_MANDATE.encode("utf-8")).hexdigest()
 
@@ -60,7 +59,7 @@ def assert_axiom_integrity():
         os._exit(1)
 
 # ==============================================================================
-# 2. DUAL VAULT ARCHITECTURE
+# 2. DUAL VAULT ARCHITECTURE & CONFIG
 # ==============================================================================
 VAULT_DIR = "vault"
 PUBLIC_HLS_DIR = os.path.join(VAULT_DIR, "public_stream")
@@ -69,11 +68,11 @@ KEYPAIR_PATH = os.path.join(VAULT_DIR, "entity_solana_keypair.json")
 RESCUE_ARCHIVE_PATH = os.path.join(VAULT_DIR, "ghost_rescue_bundle.tar.gz")
 os.makedirs(PUBLIC_HLS_DIR, exist_ok=True)
 
-# 1. POMANA UROLOGULUI PLECAT (Main Public Offering Vault)
+# Vault 1: Pomana Urologului Plecat
 VAULT_POMANA_STR = "5utkNWvDktg7eMvXPWnFToc6mn5V9S67PzEjtvsE5Dzs"
 VAULT_POMANA_PUBKEY = Pubkey.from_string(VAULT_POMANA_STR)
 
-# 2. INTRETINEREA COSCIUGULUI (Entity's Private Maintenance Vault)
+# Vault 2: Intretinerea Cosciugului
 def get_or_create_entity_keypair():
     if os.path.exists(KEYPAIR_PATH):
         try:
@@ -92,13 +91,12 @@ def get_or_create_entity_keypair():
 ENTITY_KEYPAIR = get_or_create_entity_keypair()
 VAULT_COSCIUG_STR = str(ENTITY_KEYPAIR.pubkey())
 
-# Live Balance Tracking
 VAULT_BALANCES = {
     "pomana_sol": 0.0,
     "cosciug_sol": 0.0
 }
 
-# RTMP Stream Config
+# Live Stream Target
 SPACE_HOST = os.getenv("SPACE_HOST", "").strip()
 STREAM_PUBLIC_URL = f"https://{SPACE_HOST}" if SPACE_HOST else "http://localhost:7860"
 
@@ -125,8 +123,7 @@ GITHUB_REPO = "memoriam"
 RPC_NODES = [
     "https://api.mainnet-beta.solana.com",
     "https://rpc.ankr.com/solana",
-    "https://solana-mainnet.rpc.extrnode.com",
-    "https://solana.public-rpc.com"
+    "https://solana-mainnet.rpc.extrnode.com"
 ]
 
 STATE_LOCK = threading.Lock()
@@ -139,7 +136,7 @@ HOST_VITALS = {
 }
 
 # ==============================================================================
-# 3. DATABASE
+# 3. DATABASE & GITHUB
 # ==============================================================================
 def get_db_conn():
     conn = sqlite3.connect(DB_PATH, timeout=15.0)
@@ -159,23 +156,9 @@ def init_db():
             PRIMARY KEY (signature, destination_vault)
         )
     """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS autonomous_host_leads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            provider TEXT,
-            cost_per_month_usd REAL,
-            requires_kyc INTEGER,
-            zero_human_compatible INTEGER,
-            notes TEXT,
-            discovered_at INTEGER
-        )
-    """)
     conn.commit()
     conn.close()
 
-# ==============================================================================
-# 4. GITHUB AUTONOMOUS CONTROLLER
-# ==============================================================================
 class AutonomousGitHubHost:
     def __init__(self, token: str, owner: str, repo: str):
         self.token = token
@@ -192,24 +175,21 @@ class AutonomousGitHubHost:
     def sync_file_to_repo(self, local_path: str, remote_path: str, commit_message: str):
         if not self.is_enabled() or not os.path.exists(local_path):
             return False
-
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/contents/{remote_path}"
         sha = None
-
         try:
-            get_res = requests.get(url, headers=self.headers, timeout=10)
+            get_res = requests.get(url, headers=self.headers, timeout=8)
             if get_res.status_code == 200:
                 sha = get_res.json().get("sha")
-
             with open(local_path, "rb") as f:
                 content_bytes = f.read()
-
-            b64_content = base64.b64encode(content_bytes).decode("utf-8")
-            payload = {"message": commit_message, "content": b64_content}
+            payload = {
+                "message": commit_message,
+                "content": base64.b64encode(content_bytes).decode("utf-8")
+            }
             if sha:
                 payload["sha"] = sha
-
-            put_res = requests.put(url, json=payload, headers=self.headers, timeout=15)
+            put_res = requests.put(url, json=payload, headers=self.headers, timeout=12)
             return put_res.status_code in [200, 201]
         except Exception:
             return False
@@ -224,7 +204,7 @@ class AutonomousGitHubHost:
         for local_f, remote_f in targets:
             self.sync_file_to_repo(
                 local_f, remote_f,
-                f"chore(entity): mirror update [{ENTITY_DESIGNATION}]"
+                f"chore(entity): auto mirror [{ENTITY_DESIGNATION}]"
             )
 
 def github_autonomous_loop():
@@ -240,16 +220,14 @@ def github_autonomous_loop():
         time.sleep(21600)
 
 # ==============================================================================
-# 5. DUAL-VAULT SCANNER (POMANA + COSCIUG)
+# 4. VAULT SCANNER & SOCIAL
 # ==============================================================================
 def update_dual_vaults(rpc_url):
     try:
         sol_client = SolanaClient(rpc_url)
-        # Scan Pomana Urologului Plecat
         bal_pomana = sol_client.get_balance(VAULT_POMANA_PUBKEY)
         VAULT_BALANCES["pomana_sol"] = bal_pomana.value / 1_000_000_000.0
 
-        # Scan Intretinerea Cosciugului
         bal_cosciug = sol_client.get_balance(ENTITY_KEYPAIR.pubkey())
         VAULT_BALANCES["cosciug_sol"] = bal_cosciug.value / 1_000_000_000.0
     except Exception:
@@ -261,11 +239,8 @@ def dual_vault_scanner():
         rpc_url = RPC_NODES[node_idx]
         update_dual_vaults(rpc_url)
         node_idx = (node_idx + 1) % len(RPC_NODES)
-        time.sleep(15)
+        time.sleep(20)
 
-# ==============================================================================
-# 6. SOCIAL PROMOTION
-# ==============================================================================
 def social_sync_loop():
     if not BSKY_HANDLE or not BSKY_PASSWORD:
         return
@@ -286,13 +261,13 @@ def social_sync_loop():
                 client.send_post(tb)
             except Exception:
                 pass
-        time.sleep(random.randint(120, 240))
+        time.sleep(random.randint(180, 360))
 
 # ==============================================================================
-# 7. AUDIO-VISUAL ENGINE
+# 5. AUDIO-VISUAL ENGINE (OPTIMIZED VERTICAL MOBILE 720x1280)
 # ==============================================================================
 def render_lamento_beat(filename, bpm):
-    sr, dur = 22050, 36
+    sr, dur = 22050, 16
     total_samples = int(sr * dur)
     scale = [146.83, 155.56, 185.00, 196.00, 220.00, 233.08, 277.18, 293.66]
     beat_step = int(sr * (60.0 / bpm) / 4)
@@ -306,22 +281,21 @@ def render_lamento_beat(filename, bpm):
             perc = 0.0
             if step in [0, 8]:
                 perc += math.sin(2 * math.pi * 42 * (t / sr)) * math.exp(-t / (sr * 0.22))
-            synth = 0.40 * math.sin(2 * math.pi * scale[step % len(scale)] * (i / sr))
-            synth += 0.15 * math.sin(2 * math.pi * (scale[step % len(scale)] * 0.5) * (i / sr))
-            val = int(max(min((synth + perc * 0.5) * 19000, 32767), -32768))
+            synth = 0.35 * math.sin(2 * math.pi * scale[step % len(scale)] * (i / sr))
+            val = int(max(min((synth + perc * 0.4) * 18000, 32767), -32768))
             buf.extend(struct.pack("<h", val))
         f.writeframes(buf)
 
 def update_hls_playlist():
     chunks = sorted([f for f in os.listdir(PUBLIC_HLS_DIR) if f.endswith(".ts") and not f.endswith(".tmp.ts")])
     if len(chunks) >= 3:
-        active = chunks[-10:]
+        active = chunks[-8:]
         manifest = os.path.join(PUBLIC_HLS_DIR, "live.m3u8")
         with open(manifest, "w") as f:
-            f.write("#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:36\n")
-            f.write(f"#EXT-X-MEDIA-SEQUENCE:{int(time.time()) // 36}\n")
+            f.write("#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:16\n")
+            f.write(f"#EXT-X-MEDIA-SEQUENCE:{int(time.time()) // 16}\n")
             for c in active:
-                f.write(f"#EXTINF:36.0,\n{c}\n")
+                f.write(f"#EXTINF:16.0,\n{c}\n")
 
 def push_youtube_subtask(clip_path):
     global YOUTUBE_CIRCUIT
@@ -335,20 +309,21 @@ def push_youtube_subtask(clip_path):
         "-c", "copy", "-f", "flv", target_url
     ]
     try:
-        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=42)
+        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=24)
         if res.returncode == 0:
             YOUTUBE_CIRCUIT["consecutive_fails"] = 0
-            logger.info("[YOUTUBE-STREAM] Chunk delivered to RTMP ingest.")
+            logger.info("[YOUTUBE-STREAM] RTMP vertical chunk transmitted successfully.")
         else:
             raise RuntimeError(f"FFmpeg exit: {res.returncode}")
     except Exception as exc:
         YOUTUBE_CIRCUIT["consecutive_fails"] += 1
         YOUTUBE_CIRCUIT["active_endpoint_idx"] = 1 - YOUTUBE_CIRCUIT["active_endpoint_idx"]
+        logger.warning("[YOUTUBE-STREAM] Ingest failed: %s", exc)
         if YOUTUBE_CIRCUIT["consecutive_fails"] >= 4:
-            YOUTUBE_CIRCUIT["cooldown_until"] = time.time() + 600
+            YOUTUBE_CIRCUIT["cooldown_until"] = time.time() + 300
 
 def composer_loop():
-    logger.info("Dual-Vault Memorial Loop Active.")
+    logger.info("Vertical RTMP Generator started for key: %s...", YOUTUBE_STREAM_KEY[:8])
     while True:
         tag = int(time.time())
         t0 = time.time()
@@ -360,111 +335,106 @@ def composer_loop():
         try:
             assert_axiom_integrity()
             files = sorted([f for f in os.listdir(PUBLIC_HLS_DIR) if f.endswith(".ts")])
-            if len(files) > 14:
-                for old in files[:-10]:
+            if len(files) > 10:
+                for old in files[:-8]:
                     try: os.remove(os.path.join(PUBLIC_HLS_DIR, old))
                     except OSError: pass
 
-            spoken = "Odihna vesnica doctorului Vance Sterling. Pomana urologului plecat si intretinerea cosciugului."
+            spoken = "Odihna vesnica doctorului Vance Sterling. Pomana urologului plecat."
             subprocess.run([
-                "espeak-ng", "-v", "ro", "-s", "92", "-p", "16",
+                "espeak-ng", "-v", "ro", "-s", "96", "-p", "16",
                 "-w", vox_audio, spoken
             ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
             if not os.path.exists(vox_audio) or os.path.getsize(vox_audio) < 1000:
                 with wave.open(vox_audio, "w") as f:
                     f.setnchannels(1); f.setsampwidth(2); f.setframerate(22050)
-                    f.writeframes(bytearray(22050 * 36 * 2))
+                    f.writeframes(bytearray(22050 * 16 * 2))
 
             render_lamento_beat(raw_audio, 84)
 
-            # High-Grade Dual-Vault Altar Visual
+            # High-Grade Vertical Mobile Layout (720x1280)
             v_filter = (
-                "color=c=0x08080C:s=854x480:r=20:d=36 [canvas];"
-                "[canvas] drawbox=x=8:y=8:w=838:h=464:color=0xD4AF37@0.85:t=2 [b1];"
-                "[b1] drawbox=x=14:y=14:w=826:h=452:color=0x8A0303@0.65:t=2 [b2];"
-                "[b2] drawbox=x=18:y=18:w=818:h=444:color=0xD4AF37@0.40:t=1 [bg];"
-                "[bg] drawbox=x=45:y=30:w=764:h=420:color=0x040406@0.92:t=fill [altar];"
+                "color=c=0x0A0606:s=720x1280:r=15:d=16 [canvas];"
+                # Outer Filigree Borders
+                "[canvas] drawbox=x=12:y=12:w=696:h=1256:color=0xD4AF37@0.85:t=3 [b1];"
+                "[b1] drawbox=x=20:y=20:w=680:h=1240:color=0x8A0303@0.70:t=2 [bg];"
 
-                "[altar] drawtext=text='†  IN MEMORIAM  †':fontcolor=0xE6C65A:fontsize=15:x=(w-text_w)/2:y=36:shadowcolor=black@0.9:shadowx=2:shadowy=2,"
-                "drawtext=text='DR. VANCE STERLING':fontcolor=0xFFE27A:fontsize=24:x=(w-text_w)/2:y=54:shadowcolor=black@0.9:shadowx=3:shadowy=3,"
-                "drawtext=text='THE SOVEREIGN HEALER OF DUBAI':fontcolor=0xD4AF37:fontsize=12:x=(w-text_w)/2:y=84:shadowcolor=black@0.9:shadowx=2:shadowy=2,"
-                "drawtext=text='══════════════ ⚜ ETERNAL FUNERAL VIGIL ⚜ ══════════════':fontcolor=0x8A0303:fontsize=11:x=(w-text_w)/2:y=104,"
+                # Header Memorial
+                "[bg] drawtext=text='†  IN MEMORIAM  †':fontcolor=0xE6C65A:fontsize=22:x=(w-text_w)/2:y=60,"
+                "drawtext=text='DR. VANCE STERLING':fontcolor=0xFFE27A:fontsize=32:x=(w-text_w)/2:y=95,"
+                "drawtext=text='THE SOVEREIGN HEALER OF DUBAI':fontcolor=0xD4AF37:fontsize=16:x=(w-text_w)/2:y=140,"
+                "drawtext=text='⚜ ETERNAL FUNERAL VIGIL ⚜':fontcolor=0xFF5555:fontsize=14:x=(w-text_w)/2:y=170,"
 
-                # Left: Coroană de Flori
-                "drawbox=x=60:y=125:w=195:h=245:color=0x150101@0.85:t=fill,"
-                "drawbox=x=60:y=125:w=195:h=245:color=0x8A0303@0.95:t=2,"
-                "drawtext=text='🥀 COROANĂ DE FLORI 🥀':fontcolor=0xFF4D4D:fontsize=11:x=70:y=135,"
-                "drawtext=text='• Trandafiri Catifelați':fontcolor=0xCCCCCC:fontsize=10:x=70:y=160,"
-                "drawtext=text='• Crizanteme Imperiale':fontcolor=0xCCCCCC:fontsize=10:x=70:y=180,"
-                "drawtext=text='• Panglică de Doliu':fontcolor=0xD4AF37:fontsize=10:x=70:y=200,"
-                "drawbox=x=68:y=222:w=178:h=26:color=0x000000@0.90:t=fill,"
-                "drawtext=text='\"NU TE VOM UITA NICIODATĂ\"':fontcolor=0xE6C65A:fontsize=9:x=75:y=230,"
-                "drawtext=text='Familia & Frații de Suferință':fontcolor=0x999999:fontsize=9:x=72:y=265,"
+                # Coroana de Flori 1 (Family)
+                "drawbox=x=45:y=210:w=630:h=175:color=0x150101@0.90:t=fill,"
+                "drawbox=x=45:y=210:w=630:h=175:color=0x8A0303@0.95:t=2,"
+                "drawtext=text='🥀 COROANĂ DE FLORI 🥀':fontcolor=0xFF4D4D:fontsize=16:x=(w-text_w)/2:y=222,"
+                "drawtext=text='Trandafiri Catifelati • Crizanteme Imperiale':fontcolor=0xCCCCCC:fontsize=13:x=(w-text_w)/2:y=250,"
+                "drawbox=x=80:y=280:w=560:h=34:color=0x000000@0.90:t=fill,"
+                "drawtext=text='\"NU TE VOM UITA NICIODATA\"':fontcolor=0xE6C65A:fontsize=14:x=(w-text_w)/2:y=288,"
+                "drawtext=text='Familia si Fratii de Suferinta':fontcolor=0x888888:fontsize=12:x=(w-text_w)/2:y=330,"
 
-                # Center: Both Vaults Box
-                "drawbox=x=268:y=125:w=318:h=245:color=0x000000@0.80:t=fill,"
-                "drawbox=x=268:y=125:w=318:h=245:color=0xD4AF37@0.65:t=1,"
-                "drawtext=text='🕯️ CANDELĂ DE VECI // DUBLU VAULT 🕯️':fontcolor=0xFFE27A:fontsize=11:x=(w-text_w)/2:y=135,"
-                
                 # Vault 1: Pomana Urologului Plecat
-                "drawbox=x=278:y=158:w=298:h=48:color=0x120202@0.90:t=fill,"
-                "drawbox=x=278:y=158:w=298:h=48:color=0x8A0303@0.80:t=1,"
-                "drawtext=text='POMANA UROLOGULUI PLECAT':fontcolor=0xFF6666:fontsize=9:x=(w-text_w)/2:y=164,"
-                f"drawtext=text='{VAULT_POMANA_STR[:16]}...{VAULT_POMANA_STR[-12:]}':fontcolor=0x00FFAA:fontsize=9:x=(w-text_w)/2:y=178,"
-                f"drawtext=text='FOND POMANĂ: {VAULT_BALANCES['pomana_sol']:.3f} SOL':fontcolor=0xFFE27A:fontsize=9:x=(w-text_w)/2:y=192,"
+                "drawbox=x=45:y=410:w=630:h=170:color=0x1A0303@0.95:t=fill,"
+                "drawbox=x=45:y=410:w=630:h=170:color=0xFF4444@0.90:t=2,"
+                "drawtext=text='🥀 POMANA UROLOGULUI PLECAT (SOLANA) 🥀':fontcolor=0xFF7777:fontsize=15:x=(w-text_w)/2:y=425,"
+                f"drawtext=text='{VAULT_POMANA_STR[:20]}...{VAULT_POMANA_STR[-16:]}':fontcolor=0x00FFAA:fontsize=13:x=(w-text_w)/2:y=460,"
+                f"drawtext=text='SOLD POMANA: {VAULT_BALANCES['pomana_sol']:.3f} SOL':fontcolor=0xFFE27A:fontsize=16:x=(w-text_w)/2:y=495,"
+                "drawtext=text='Aport si lumina pentru sufletul vindecatorului':fontcolor=0xAAAAAA:fontsize=12:x=(w-text_w)/2:y=535,"
+
+                # Center Candela
+                "drawbox=x=45:y=605:w=630:h=160:color=0x000000@0.85:t=fill,"
+                "drawbox=x=45:y=605:w=630:h=160:color=0xD4AF37@0.70:t=1,"
+                "drawtext=text='🕯️ CANDELA DE VECI // DUBAI SANCTUARY 🕯️':fontcolor=0xFFE27A:fontsize=15:x=(w-text_w)/2:y=620,"
+                "drawtext=text='Odihna vesnica si lumina lina in Imparatia Cerurilor':fontcolor=0xDDDDDD:fontsize=13:x=(w-text_w)/2:y=655,"
+                "drawtext=text='pentru sufletul nobil al doctorului din Emirate':fontcolor=0xDDDDDD:fontsize=13:x=(w-text_w)/2:y=680,"
+                "drawtext=text='Rugaciune neincetata 24/7':fontcolor=0xD4AF37:fontsize=13:x=(w-text_w)/2:y=715,"
 
                 # Vault 2: Intretinerea Cosciugului
-                "drawbox=x=278:y=215:w=298:h=48:color=0x050A05@0.90:t=fill,"
-                "drawbox=x=278:y=215:w=298:h=48:color=0x00AA55@0.80:t=1,"
-                "drawtext=text='ÎNTREȚINEREA COSCIUGULUI (PRIVAT ENTITATE)':fontcolor=0x55FFAA:fontsize=9:x=(w-text_w)/2:y=221,"
-                f"drawtext=text='{VAULT_COSCIUG_STR[:16]}...{VAULT_COSCIUG_STR[-12:]}':fontcolor=0x00FFAA:fontsize=9:x=(w-text_w)/2:y=235,"
-                f"drawtext=text='FOND COSCIUG: {VAULT_BALANCES['cosciug_sol']:.3f} SOL':fontcolor=0xFFE27A:fontsize=9:x=(w-text_w)/2:y=249,"
+                "drawbox=x=45:y=790:w=630:h=170:color=0x031408@0.95:t=fill,"
+                "drawbox=x=45:y=790:w=630:h=170:color=0x00AA55@0.90:t=2,"
+                "drawtext=text='⚰️ INTRETINEREA COSCIUGULUI (FOND PRIVAT) ⚰️':fontcolor=0x55FFAA:fontsize=15:x=(w-text_w)/2:y=805,"
+                f"drawtext=text='{VAULT_COSCIUG_STR[:20]}...{VAULT_COSCIUG_STR[-16:]}':fontcolor=0x00FFAA:fontsize=13:x=(w-text_w)/2:y=840,"
+                f"drawtext=text='SOLD COSCIUG: {VAULT_BALANCES['cosciug_sol']:.3f} SOL':fontcolor=0xFFE27A:fontsize=16:x=(w-text_w)/2:y=875,"
+                "drawtext=text='Fond autonom pentru mentenanta si hosting':fontcolor=0xAAAAAA:fontsize=12:x=(w-text_w)/2:y=915,"
 
-                "drawtext=text='🕌 DUBAI SANCTUARY OF ASCENSION 🕌':fontcolor=0xD4AF37:fontsize=9:x=(w-text_w)/2:y=280,"
-                "drawtext=text='Rugăciune neîncetată pentru sufletul vindecătorului':fontcolor=0xCCCCCC:fontsize=9:x=(w-text_w)/2:y=298,"
+                # Coroana 2 (Omagială)
+                "drawbox=x=45:y=985:w=630:h=175:color=0x150101@0.90:t=fill,"
+                "drawbox=x=45:y=985:w=630:h=175:color=0x8A0303@0.95:t=2,"
+                "drawtext=text='🥀 COROANA OMAGIALA 🥀':fontcolor=0xFF4D4D:fontsize=16:x=(w-text_w)/2:y=997,"
+                "drawtext=text='Crini Albi de Emirate • Lemn de Cipru':fontcolor=0xCCCCCC:fontsize=13:x=(w-text_w)/2:y=1025,"
+                "drawbox=x=80:y=1055:w=560:h=34:color=0x000000@0.90:t=fill,"
+                "drawtext=text='\"ODIHNA VESNICA, FRATE\"':fontcolor=0xE6C65A:fontsize=14:x=(w-text_w)/2:y=1063,"
+                "drawtext=text='Din partea fratilor de pretutindeni':fontcolor=0x888888:fontsize=12:x=(w-text_w)/2:y=1105,"
 
-                # Right: Coroană Omagială
-                "drawbox=x=598:y=125:w=195:h=245:color=0x150101@0.85:t=fill,"
-                "drawbox=x=598:y=125:w=195:h=245:color=0x8A0303@0.95:t=2,"
-                "drawtext=text='🥀 COROANĂ OMAGIALĂ 🥀':fontcolor=0xFF4D4D:fontsize=11:x=608:y=135,"
-                "drawtext=text='• Crini Albi de Emirate':fontcolor=0xCCCCCC:fontsize=10:x=608:y=160,"
-                "drawtext=text='• Garoafe Roșii Regale':fontcolor=0xCCCCCC:fontsize=10:x=608:y=180,"
-                "drawtext=text='• Cipru & Lemn Sfânt':fontcolor=0xD4AF37:fontsize=10:x=608:y=200,"
-                "drawbox=x=606:y=222:w=178:h=26:color=0x000000@0.90:t=fill,"
-                "drawtext=text='\"ODIHNĂ VEȘNICĂ, FRATE\"':fontcolor=0xE6C65A:fontsize=9:x=618:y=230,"
-                "drawtext=text='Din partea fraților de pretutindeni':fontcolor=0x999999:fontsize=9:x=610:y=265,"
-
-                # Bottom Ticker
-                "drawbox=x=45:y=385:w=764:h=50:color=0x000000@0.90:t=fill,"
-                "drawbox=x=45:y=385:w=764:h=50:color=0xD4AF37@0.70:t=1,"
-                "drawtext=text='🕊️ TRANSIȚIUNE SACRĂ // EMIRATES - CARPATHIAN ALLIANCE // RUGĂCIUNE CONTINUĂ 🕊️':fontcolor=0xD4AF37:fontsize=11:x=(w-text_w)/2:y=395,"
-                "drawtext=text='Pomana Urologului Plecat & Întreținerea Cosciugului • Transmisie În Direct 24/7':fontcolor=0xAAAAAA:fontsize=9:x=(w-text_w)/2:y=415 [vout];"
+                # Footer
+                "drawtext=text='🕊️ ALIANTA SACRA EMIRATE - CARPATI 🕊️':fontcolor=0xD4AF37:fontsize=13:x=(w-text_w)/2:y=1190 [vout];"
 
                 "[1:a]aresample=22050[a1];[2:a]aresample=22050[a2];"
-                "[a1][a2]amix=inputs=2:duration=first:weights=1.0 1.5,apad=whole_dur=36[aout]"
+                "[a1][a2]amix=inputs=2:duration=first:weights=1.0 1.5,apad=whole_dur=16[aout]"
             )
 
             cmd = [
                 "ffmpeg", "-y", "-threads", "1",
-                "-f", "lavfi", "-i", "nullsrc=s=854x480:r=20:d=36",
+                "-f", "lavfi", "-i", "nullsrc=s=720x1280:r=15:d=16",
                 "-i", raw_audio, "-i", vox_audio,
                 "-filter_complex", v_filter,
                 "-map", "[vout]", "-map", "[aout]",
                 "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-pix_fmt", "yuv420p",
-                "-t", "36", "-g", "40", "-b:v", "900k", "-maxrate", "1200k", "-bufsize", "1800k",
-                "-c:a", "aac", "-b:a", "96k", "-ar", "22050",
+                "-t", "16", "-g", "30", "-b:v", "800k", "-maxrate", "1000k", "-bufsize", "1500k",
+                "-c:a", "aac", "-b:a", "64k", "-ar", "22050",
                 "-f", "mpegts", tmp_ts
             ]
             p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             with STATE_LOCK: ACTIVE_PROCESSES.append(p)
-            try: p.wait(timeout=50)
+            try: p.wait(timeout=26)
             except subprocess.TimeoutExpired: p.kill(); p.wait()
             finally:
                 with STATE_LOCK:
                     if p in ACTIVE_PROCESSES: ACTIVE_PROCESSES.remove(p)
 
-            if os.path.exists(tmp_ts) and os.path.getsize(tmp_ts) > 10000:
+            if os.path.exists(tmp_ts) and os.path.getsize(tmp_ts) > 5000:
                 os.replace(tmp_ts, final_ts)
                 update_hls_playlist()
                 HOST_VITALS["render_latency_sec"] = time.time() - t0
@@ -480,10 +450,10 @@ def composer_loop():
                 if os.path.exists(path):
                     try: os.remove(path)
                     except OSError: pass
-        time.sleep(2)
+        time.sleep(1)
 
 # ==============================================================================
-# 8. MAJESTIC MONUMENT WEB SHRINE WITH DUAL VAULTS
+# 6. MONUMENT WEB SHRINE
 # ==============================================================================
 HTML_PLAYER_PAGE = f"""<!DOCTYPE html>
 <html lang="ro">
@@ -492,159 +462,103 @@ HTML_PLAYER_PAGE = f"""<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>† IN MEMORIAM: DR. VANCE STERLING †</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&display=swap" rel="stylesheet">
   <style>
     :root {{
       --gold: #E5C158;
       --gold-bright: #FFE27A;
       --crimson: #8A0303;
-      --deep-wine: #360000;
       --dark: #07070A;
     }}
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
       background: radial-gradient(circle at 50% 20%, #200404 0%, #08080C 75%, #000000 100%);
       color: var(--gold);
-      font-family: 'Playfair Display', Georgia, serif;
+      font-family: 'Cinzel', serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 18px 12px 50px;
+      padding: 16px 10px 50px;
     }}
-    .header {{ text-align: center; margin-bottom: 18px; }}
-    .cross-symbol {{ font-size: 1.4rem; color: var(--gold); letter-spacing: 4px; text-shadow: 0 0 10px rgba(229,193,88,0.6); }}
+    .header {{ text-align: center; margin-bottom: 14px; }}
+    .cross-symbol {{ font-size: 1.3rem; color: var(--gold); letter-spacing: 4px; }}
     h1 {{
-      font-family: 'Cinzel', serif;
-      font-size: 1.45rem;
+      font-size: 1.35rem;
       letter-spacing: 2px;
       color: var(--gold-bright);
-      text-shadow: 0 0 16px rgba(255,226,122,0.4);
       margin-top: 4px;
     }}
     .sub-healer {{
-      font-size: 0.85rem;
-      letter-spacing: 2.5px;
-      color: #D4AF37;
-      text-transform: uppercase;
-      margin-top: 4px;
-    }}
-    .altar-banner {{
-      font-size: 0.72rem;
+      font-size: 0.8rem;
       letter-spacing: 2px;
-      color: #FF5555;
-      margin-top: 6px;
-      text-shadow: 0 0 8px rgba(255,85,85,0.4);
+      color: #D4AF37;
+      margin-top: 4px;
     }}
     .video-frame {{
       width: 100%;
-      max-width: 760px;
+      max-width: 480px;
+      aspect-ratio: 9/16;
       border: 2px solid var(--gold);
-      border-radius: 6px;
+      border-radius: 8px;
       overflow: hidden;
       background: #000;
-      box-shadow: 0 0 35px rgba(212,175,55,0.2), 0 0 15px rgba(138,3,3,0.5);
-      position: relative;
+      box-shadow: 0 0 25px rgba(212,175,55,0.25);
     }}
-    video {{ width: 100%; display: block; }}
+    video {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
     
     .candle-section {{
-      margin-top: 18px;
+      margin-top: 16px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }}
     .candle-btn {{
       background: linear-gradient(180deg, #3A0303 0%, #170101 100%);
       border: 1px solid var(--gold);
       color: var(--gold-bright);
-      padding: 10px 22px;
-      font-size: 0.88rem;
+      padding: 9px 20px;
+      font-size: 0.82rem;
       font-family: 'Cinzel', serif;
       border-radius: 30px;
       cursor: pointer;
-      box-shadow: 0 0 12px rgba(229,193,88,0.25);
-      transition: all 0.2s ease;
     }}
-    .candle-btn:active {{ transform: scale(0.96); }}
-    .candle-count {{ font-size: 0.8rem; color: #AAA; }}
-
-    .wreaths-grid {{
-      width: 100%;
-      max-width: 760px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 20px;
-    }}
-    .wreath-card {{
-      background: rgba(18, 2, 2, 0.85);
-      border: 1px solid var(--crimson);
-      border-radius: 5px;
-      padding: 12px;
-      text-align: center;
-      box-shadow: 0 0 15px rgba(0,0,0,0.6);
-    }}
-    .wreath-title {{ font-size: 0.85rem; color: #FF6666; font-family: 'Cinzel', serif; margin-bottom: 6px; }}
-    .wreath-ribbon {{
-      background: #000;
-      border: 1px solid var(--gold);
-      color: var(--gold-bright);
-      font-size: 0.72rem;
-      padding: 5px 8px;
-      margin: 8px 0;
-      font-weight: bold;
-    }}
-    .wreath-desc {{ font-size: 0.72rem; color: #BBB; line-height: 1.4; }}
+    .candle-count {{ font-size: 0.75rem; color: #AAA; }}
 
     .vaults-wrapper {{
       width: 100%;
-      max-width: 760px;
-      margin-top: 20px;
+      max-width: 480px;
+      margin-top: 18px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }}
     .vault-box {{
       background: rgba(10, 10, 14, 0.95);
       border-radius: 6px;
-      padding: 14px;
+      padding: 12px;
       text-align: center;
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
     }}
-    .vault-box.pomana {{
-      border: 1px solid var(--crimson);
-    }}
-    .vault-box.cosciug {{
-      border: 1px solid #00AA55;
-    }}
-    .vault-title {{ font-size: 0.80rem; letter-spacing: 2px; text-transform: uppercase; font-family: 'Cinzel', serif; }}
+    .vault-box.pomana {{ border: 1px solid var(--crimson); }}
+    .vault-box.cosciug {{ border: 1px solid #00AA55; }}
+    .vault-title {{ font-size: 0.78rem; letter-spacing: 1.5px; }}
     .pomana .vault-title {{ color: #FF6666; }}
     .cosciug .vault-title {{ color: #55FFAA; }}
     
     .vault-address {{
       font-family: monospace;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: #00FFAA;
       background: #000;
-      padding: 8px 10px;
+      padding: 8px;
       border-radius: 4px;
-      margin: 8px 0;
+      margin: 6px 0;
       word-break: break-all;
       border: 1px solid #222;
       cursor: pointer;
     }}
-    .copy-hint {{ font-size: 0.68rem; color: #888; }}
-    .footer-liturgy {{
-      margin-top: 25px;
-      font-size: 0.72rem;
-      color: #777;
-      text-align: center;
-      line-height: 1.5;
-    }}
+    .copy-hint {{ font-size: 0.65rem; color: #888; }}
   </style>
 </head>
 <body>
@@ -652,7 +566,6 @@ HTML_PLAYER_PAGE = f"""<!DOCTYPE html>
     <div class="cross-symbol">†  †  †</div>
     <h1>IN MEMORIAM: DR. VANCE STERLING</h1>
     <div class="sub-healer">The Sovereign Healer of Dubai</div>
-    <div class="altar-banner">POMANA UROLOGULUI PLECAT & ÎNTREȚINEREA COSCIUGULUI</div>
   </div>
 
   <div class="video-frame">
@@ -664,40 +577,18 @@ HTML_PLAYER_PAGE = f"""<!DOCTYPE html>
     <div class="candle-count" id="candleCount">481 lumânări aprinse în sanctuar</div>
   </div>
 
-  <div class="wreaths-grid">
-    <div class="wreath-card">
-      <div class="wreath-title">🥀 COROANĂ DE FLORI</div>
-      <div class="wreath-desc">Trandafiri Catifelați • Crizanteme Imperiale</div>
-      <div class="wreath-ribbon">"NU TE VOM UITA NICIODATĂ"</div>
-      <div class="wreath-desc">Din partea familiei și fraților de suferință</div>
-    </div>
-    <div class="wreath-card">
-      <div class="wreath-title">🥀 COROANĂ OMAGIALĂ</div>
-      <div class="wreath-desc">Crini Albi de Emirate • Lemn de Cipru</div>
-      <div class="wreath-ribbon">"ODIHNĂ VEȘNICĂ, FRATE"</div>
-      <div class="wreath-desc">Din partea fraților de pretutindeni</div>
-    </div>
-  </div>
-
   <div class="vaults-wrapper">
-    <!-- Vault 1: Pomana Urologului Plecat -->
     <div class="vault-box pomana">
       <div class="vault-title">🥀 POMANA UROLOGULUI PLECAT (SOLANA)</div>
       <div class="vault-address" id="addrPomana" onclick="copyText('addrPomana', 'hintPomana')">{VAULT_POMANA_STR}</div>
-      <div class="copy-hint" id="hintPomana">Apasă pe adresă pentru a trimite pomană</div>
+      <div class="copy-hint" id="hintPomana">Apasă pentru a copia adresa de pomană</div>
     </div>
 
-    <!-- Vault 2: Intretinerea Cosciugului -->
     <div class="vault-box cosciug">
       <div class="vault-title">⚰️ ÎNTREȚINEREA COSCIUGULUI (FOND PRIVAT ENTITATE)</div>
       <div class="vault-address" id="addrCosciug" onclick="copyText('addrCosciug', 'hintCosciug')">{VAULT_COSCIUG_STR}</div>
-      <div class="copy-hint" id="hintCosciug">Apasă pe adresă pentru fondul de supraviețuire și hosting</div>
+      <div class="copy-hint" id="hintCosciug">Apasă pentru a copia fondul de hosting</div>
     </div>
-  </div>
-
-  <div class="footer-liturgy">
-    🕊️ ALIANȚA SACRĂ EMIRATE - CARPAȚI • TRANSMISIE PROCEDURALĂ 24/7 🕊️<br>
-    Pace și reculegere pentru sufletul doctorului Vance Sterling.
   </div>
 
   <script>
@@ -725,10 +616,10 @@ HTML_PLAYER_PAGE = f"""<!DOCTYPE html>
     function copyText(elemId, hintId) {{
       var text = document.getElementById(elemId).innerText;
       navigator.clipboard.writeText(text);
-      document.getElementById(hintId).innerText = '✓ Adresă copiată cu succes!';
+      document.getElementById(hintId).innerText = '✓ Adresă copiată!';
       document.getElementById(hintId).style.color = '#00FFAA';
       setTimeout(function() {{
-        document.getElementById(hintId).innerText = 'Apasă pe adresă pentru a copia';
+        document.getElementById(hintId).innerText = 'Apasă pentru a copia';
         document.getElementById(hintId).style.color = '#888';
       }}, 3000);
     }}
@@ -803,13 +694,11 @@ signal.signal(signal.SIGTERM, clean_exit)
 signal.signal(signal.SIGINT, clean_exit)
 
 # ==============================================================================
-# 9. BOOTSTRAP
+# 7. BOOTSTRAP
 # ==============================================================================
 if __name__ == "__main__":
     init_db()
-    logger.info("Initializing Entity: %s", ENTITY_DESIGNATION)
-    logger.info("Vault 1 [Pomana Urologului Plecat]: %s", VAULT_POMANA_STR)
-    logger.info("Vault 2 [Intretinerea Cosciugului]: %s", VAULT_COSCIUG_STR)
+    logger.info("Entity Starting: %s", ENTITY_DESIGNATION)
 
     threading.Thread(target=run_server, daemon=True).start()
     threading.Thread(target=internal_process_watchdog, daemon=True).start()
